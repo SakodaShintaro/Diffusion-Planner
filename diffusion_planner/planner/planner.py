@@ -80,7 +80,7 @@ class DiffusionPlanner(AbstractPlanner):
         self._route_roadblock_ids = initialization.route_roadblock_ids
 
         if self._ckpt_path is not None:
-            state_dict:Dict = torch.load(self._ckpt_path)
+            state_dict:Dict = torch.load(self._ckpt_path, map_location=self._device)
             
             if self._ema_enabled:
                 state_dict = state_dict['ema_state_dict']

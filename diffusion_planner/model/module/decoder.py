@@ -6,7 +6,7 @@ from timm.layers import DropPath
 
 from diffusion_planner.model.diffusion_utils.sampling import dpm_sampler
 from diffusion_planner.model.diffusion_utils.sde import SDE, VPSDE_linear
-from diffusion_planner.utils.normalizer import StateNormalizer
+from diffusion_planner.utils.normalizer import ObservationNormalizer, StateNormalizer
 from diffusion_planner.model.module.mixer import MixerBlock
 from diffusion_planner.model.module.dit import TimestepEmbedder, DiTBlock, FinalLayer
 
@@ -32,6 +32,10 @@ class Decoder(nn.Module):
         )
         
         self._state_normalizer: StateNormalizer = config.state_normalizer
+        self._observation_normalizer: ObservationNormalizer = config.observation_normalizer
+        
+        # self._guidance_fn = config.guidance_fn
+        self._guidance_fn = config.guidance_fn if config.__dict__.get("guidance_fn") is not None else None
         self._model_type = config.diffusion_model_type
         
     @property
@@ -74,6 +78,7 @@ class Decoder(nn.Module):
         ego_current = inputs['ego_current_state'][:, None, :4]
         neighbors_current = inputs["neighbor_agents_past"][:, :self._predicted_neighbor_num, -1, :4]
         neighbor_current_mask = torch.sum(torch.ne(neighbors_current[..., :4], 0), dim=-1) == 0
+        inputs["neighbor_current_mask"] = neighbor_current_mask
 
         current_states = torch.cat([ego_current, neighbors_current], dim=1) # [B, P, 4]
 
@@ -138,7 +143,23 @@ class Decoder(nn.Module):
                         },
                         dpm_solver_params={
                             "correcting_xt_fn":initial_state_constraint,
-                        }
+                        },
+                        model_wrapper_params={
+                            "classifier_fn": self._guidance_fn,
+                            "classifier_kwargs": {
+                                "model": self.dit,
+                                "model_condition": {
+                                    "cross_c": ego_neighbor_encoding, 
+                                    "route_lanes": route_lanes,
+                                    "neighbor_current_mask": neighbor_current_mask                            
+                                },
+                                "inputs": inputs,
+                                "observation_normalizer": self._observation_normalizer,
+                                "state_normalizer": self._state_normalizer
+                            },
+                            "guidance_scale": 0.5,
+                            "guidance_type": "classifier" if self._guidance_fn is not None else "uncond"
+                        },
                 )
             x0 = self._state_normalizer.inverse(x0.reshape(B, P, -1, 4))[:, :, 1:]
 

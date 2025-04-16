@@ -30,7 +30,7 @@ The code is under cleaning and will be released gradually.
 
 - [ ] e2e & real world vehicle
 - [ ] delivery vehicle dataset (government approval in progress)
-- [ ] guidance tutorial
+- [x] guidance tutorial
 - [x] data preprocess
 - [x] training code
 - [x] diffusion planner & checkpoint
@@ -136,6 +136,17 @@ bash sim_diffusion_planner_runner.sh
 - Visualize the results
 1. Set up configuration in run_nuboard.ipynb.
 2. Launch Jupyter Notebook or JupyterLab to execute run_nuboard.ipynb.
+
+### Classifer Guidance Demo
+
+1. Set up configuration in sim_diffusion_planner_runner.sh.
+2. Run
+
+```bash
+bash sim_guidance_demo.sh
+```
+
+Further detail see [Classifier Guidance Doc](diffusion_planner/model/guidance/documentation_guidance.md)
 
 ### Training
 - Preprocess the training data

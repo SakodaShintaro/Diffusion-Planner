@@ -8,7 +8,10 @@ diffusion_planner:
 
     args_file: ???
 
-    guidance_fn: null
+    guidance_fn:
+      _target_: diffusion_planner.model.guidance.guidance_wrapper.GuidanceWrapper
+      _convert_: "all"
+
   ckpt_path: ???
 
   past_trajectory_sampling:

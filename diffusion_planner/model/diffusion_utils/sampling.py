@@ -26,7 +26,6 @@ def dpm_sampler(
             noise_schedule,
             model_type=model.model_type,  # or "x_start" or "v" or "score"
             model_kwargs=other_model_params,
-            guidance_type="uncond",
             **model_wrapper_params
         )
 
