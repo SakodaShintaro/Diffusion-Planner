@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from attr import define, field
-
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+from attr import define, field
 from typing_extensions import Self
 
-from .polyline import Polyline
-
 from .map import MapType
+from .polyline import Polyline
 
 if TYPE_CHECKING:
     from .typing import NDArrayF32
@@ -38,16 +36,14 @@ class AWMLStaticMap:
     boundary_segments: dict[int, BoundarySegment] = field(factory=dict)
 
     def __post_init__(self) -> None:
+        assert all(isinstance(item, LaneSegment) for _, item in self.lane_segments.items()), (
+            "Expected all items are LaneSegments."
+        )
         assert all(
-            isinstance(item, LaneSegment) for _, item in self.lane_segments.items()
-        ), "Expected all items are LaneSegments."
-        assert all(
-            isinstance(item, CrosswalkSegment)
-            for _, item in self.crosswalk_segments.items()
+            isinstance(item, CrosswalkSegment) for _, item in self.crosswalk_segments.items()
         ), "Expected all items are CrosswalkSegments."
         assert all(
-            isinstance(item, BoundarySegment)
-            for _, item in self.boundary_segments.items()
+            isinstance(item, BoundarySegment) for _, item in self.boundary_segments.items()
         ), "Expected all items are BoundarySegments."
 
     @classmethod
@@ -66,8 +62,7 @@ class AWMLStaticMap:
         map_id: int = data["id"]
 
         lane_segments: dict[int, LaneSegment] = {
-            seg_id: LaneSegment.from_dict(seg)
-            for seg_id, seg in data["lane_segments"].items()
+            seg_id: LaneSegment.from_dict(seg) for seg_id, seg in data["lane_segments"].items()
         }
 
         crosswalk_segments: dict[int, CrosswalkSegment] = {
@@ -163,11 +158,7 @@ class AWMLStaticMap:
                 all_polyline.append(boundary.as_array(full=full, as_3d=as_3d))
             else:
                 all_polyline.append(boundary.polyline)
-        return (
-            np.concatenate(all_polyline, axis=0, dtype=np.float32)
-            if as_array
-            else all_polyline
-        )
+        return np.concatenate(all_polyline, axis=0, dtype=np.float32) if as_array else all_polyline
 
 
 def _to_boundary_segment(x: list[dict | BoundarySegment]) -> list[BoundarySegment]:
@@ -196,12 +187,8 @@ class LaneSegment:
         converter=lambda x: Polyline.from_dict(x) if isinstance(x, dict) else x
     )
     is_intersection: bool
-    left_boundaries: list[BoundarySegment] = field(
-        converter=_to_boundary_segment, factory=list
-    )
-    right_boundaries: list[BoundarySegment] = field(
-        converter=_to_boundary_segment, factory=list
-    )
+    left_boundaries: list[BoundarySegment] = field(converter=_to_boundary_segment, factory=list)
+    right_boundaries: list[BoundarySegment] = field(converter=_to_boundary_segment, factory=list)
     left_neighbor_ids: list[int] = field(factory=list)
     right_neighbor_ids: list[int] = field(factory=list)
     speed_limit_mph: float | None = field(default=None)
@@ -259,9 +246,7 @@ class LaneSegment:
             NDArrayF32: Polyline of the road segment in shape (N, D).
 
         """
-        all_polyline: list[NDArrayF32] = [
-            self.polyline.as_array(full=full, as_3d=as_3d)
-        ]
+        all_polyline: list[NDArrayF32] = [self.polyline.as_array(full=full, as_3d=as_3d)]
         duplicate_boundary_ids: list[int] = []
 
         def _append_boundaries(boundaries: list[BoundarySegment]) -> None:

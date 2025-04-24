@@ -43,9 +43,7 @@ class LabelBaseType(IntEnum):
 
         """
         name = name.upper()
-        assert name in cls.__members__, (
-            f"{name} is not in enum members of {cls.__name__}."
-        )
+        assert name in cls.__members__, f"{name} is not in enum members of {cls.__name__}."
         return cls.__members__[name]
 
     @classmethod

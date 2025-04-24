@@ -1,7 +1,9 @@
-from copy import copy, deepcopy
+from copy import copy
+
 import torch
 
 from diffusion_planner.utils.train_utils import openjson
+
 
 class StateNormalizer:
     def __init__(self, mean, std):
@@ -14,7 +16,7 @@ class StateNormalizer:
         mean = [[data["ego"]["mean"]]] + [[data["neighbor"]["mean"]]] * args.predicted_neighbor_num
         std = [[data["ego"]["std"]]] + [[data["neighbor"]["std"]]] * args.predicted_neighbor_num
         return cls(mean, std)
-    
+
     def __call__(self, data):
         return (data - self.mean.to(data.device)) / self.std.to(data.device)
 
@@ -24,7 +26,7 @@ class StateNormalizer:
     def to_dict(self):
         return {
             "mean": self.mean.detach().cpu().numpy().tolist(),
-            "std": self.std.detach().cpu().numpy().tolist()
+            "std": self.std.detach().cpu().numpy().tolist(),
         }
 
 
@@ -43,7 +45,10 @@ class ObservationNormalizer:
         ndt = {}
         for k, v in data.items():
             if k not in ["ego", "neighbor"]:
-                ndt[k]= {"mean": torch.tensor(v["mean"], dtype=torch.float32), "std": torch.tensor(v["std"], dtype=torch.float32)}
+                ndt[k] = {
+                    "mean": torch.tensor(v["mean"], dtype=torch.float32),
+                    "std": torch.tensor(v["std"], dtype=torch.float32),
+                }
         return cls(ndt)
 
     def __call__(self, data):
@@ -67,4 +72,7 @@ class ObservationNormalizer:
         return norm_data
 
     def to_dict(self):
-        return {k: {kk: vv.detach().cpu().numpy().tolist() for kk, vv in v.items()} for k, v in self._normalization_dict.items()}
+        return {
+            k: {kk: vv.detach().cpu().numpy().tolist() for kk, vv in v.items()}
+            for k, v in self._normalization_dict.items()
+        }

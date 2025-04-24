@@ -7,23 +7,23 @@ Categories:
     2. Get maps array for model input
 """
 
-from typing import List, Dict, Tuple, Set
-import numpy as np
-from shapely import LineString
+from typing import Dict, List, Set, Tuple
 
+import numpy as np
 from nuplan.common.actor_state.state_representation import Point2D
 from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.maps_datatypes import SemanticMapLayer, TrafficLightStatusData
 from nuplan.common.maps.nuplan_map.utils import get_distance_between_map_object_and_point
-from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, SemanticMapLayer
 from nuplan.planning.training.preprocessing.feature_builders.vector_builder_utils import (
-MapObjectPolylines, 
-VectorFeatureLayer, 
-LaneSegmentLaneIDs, 
-VectorFeatureLayerMapping, 
-LaneSegmentTrafficLightData,
-get_traffic_light_encoding,
-get_map_object_polygons
+    LaneSegmentLaneIDs,
+    LaneSegmentTrafficLightData,
+    MapObjectPolylines,
+    VectorFeatureLayer,
+    VectorFeatureLayerMapping,
+    get_map_object_polygons,
+    get_traffic_light_encoding,
 )
+from shapely import LineString
 
 from diffusion_planner.data_process.utils import vector_set_coordinates_to_local_frame
 
@@ -63,16 +63,22 @@ def _get_lane_polylines(
     for layer_name in layer_names:
         map_objects += layers[layer_name]
     # sort by distance to query point
-    map_objects.sort(key=lambda map_obj: float(get_distance_between_map_object_and_point(point, map_obj)))
+    map_objects.sort(
+        key=lambda map_obj: float(get_distance_between_map_object_and_point(point, map_obj))
+    )
 
     for map_obj in map_objects:
         # center lane
-        baseline_path_polyline = [Point2D(node.x, node.y) for node in map_obj.baseline_path.discrete_path]
+        baseline_path_polyline = [
+            Point2D(node.x, node.y) for node in map_obj.baseline_path.discrete_path
+        ]
         lanes_mid.append(baseline_path_polyline)
 
         # boundaries
         lanes_left.append([Point2D(node.x, node.y) for node in map_obj.left_boundary.discrete_path])
-        lanes_right.append([Point2D(node.x, node.y) for node in map_obj.right_boundary.discrete_path])
+        lanes_right.append(
+            [Point2D(node.x, node.y) for node in map_obj.right_boundary.discrete_path]
+        )
 
         # lane ids
         lane_ids.append(map_obj.id)
@@ -85,7 +91,6 @@ def _get_lane_polylines(
             lane_speed_limit.append(map_obj.speed_limit_mps)
             lane_has_speed_limit.append(True)
 
-        
         lane_roadblock_ids.append(map_obj.get_roadblock_id())
 
     return (
@@ -95,7 +100,7 @@ def _get_lane_polylines(
         LaneSegmentLaneIDs(lane_ids),
         lane_speed_limit,
         lane_has_speed_limit,
-        lane_roadblock_ids
+        lane_roadblock_ids,
     )
 
 
@@ -134,13 +139,20 @@ def get_neighbor_vector_set_map(
 
     # extract lanes
     if VectorFeatureLayer.LANE in feature_layers:
-        lanes_mid, lanes_left, lanes_right, lane_ids, lane_speed_limit, lane_has_speed_limit, lane_route = _get_lane_polylines(map_api, point, radius)
+        (
+            lanes_mid,
+            lanes_left,
+            lanes_right,
+            lane_ids,
+            lane_speed_limit,
+            lane_has_speed_limit,
+            lane_route,
+        ) = _get_lane_polylines(map_api, point, radius)
 
         # lane baseline paths
         coords[VectorFeatureLayer.LANE.name] = lanes_mid
-        speed_limit['lane_has_speed_limit'] = np.array(lane_has_speed_limit, dtype=np.bool_)
-        speed_limit['lane_speed_limit'] = np.array(lane_speed_limit, dtype=np.float32)
-        
+        speed_limit["lane_has_speed_limit"] = np.array(lane_has_speed_limit, dtype=np.bool_)
+        speed_limit["lane_speed_limit"] = np.array(lane_speed_limit, dtype=np.float32)
 
         # lane traffic light data
         traffic_light_data[VectorFeatureLayer.LANE.name] = get_traffic_light_encoding(
@@ -151,8 +163,9 @@ def get_neighbor_vector_set_map(
         if VectorFeatureLayer.LEFT_BOUNDARY in feature_layers:
             coords[VectorFeatureLayer.LEFT_BOUNDARY.name] = MapObjectPolylines(lanes_left.polylines)
         if VectorFeatureLayer.RIGHT_BOUNDARY in feature_layers:
-            coords[VectorFeatureLayer.RIGHT_BOUNDARY.name] = MapObjectPolylines(lanes_right.polylines)
-
+            coords[VectorFeatureLayer.RIGHT_BOUNDARY.name] = MapObjectPolylines(
+                lanes_right.polylines
+            )
 
     # extract generic map objects
     for feature_layer in feature_layers:
@@ -170,18 +183,32 @@ def get_neighbor_vector_set_map(
 # =====================
 def _interpolate_points(line, num_point):
     line = LineString(line)
-    new_line = np.concatenate([line.interpolate(d).coords._coords for d in np.linspace(0, line.length, num_point)])
+    new_line = np.concatenate(
+        [line.interpolate(d).coords._coords for d in np.linspace(0, line.length, num_point)]
+    )
 
     return new_line
 
-def _convert_lane_to_fixed_size(ego_pose, feature_coords, speed_limit, lane_route, left_boundary, right_boundary, feature_tl_data, max_elements, max_points,
-                                         traffic_light_encoding_dim):
 
+def _convert_lane_to_fixed_size(
+    ego_pose,
+    feature_coords,
+    speed_limit,
+    lane_route,
+    left_boundary,
+    right_boundary,
+    feature_tl_data,
+    max_elements,
+    max_points,
+    traffic_light_encoding_dim,
+):
     if feature_tl_data is not None and len(feature_coords) != len(feature_tl_data):
-        raise ValueError(f"Size between feature coords and traffic light data inconsistent: {len(feature_coords)}, {len(feature_tl_data)}")
-    
-    lane_has_speed_limit = speed_limit['lane_has_speed_limit']
-    lane_speed_limit = speed_limit['lane_speed_limit']
+        raise ValueError(
+            f"Size between feature coords and traffic light data inconsistent: {len(feature_coords)}, {len(feature_tl_data)}"
+        )
+
+    lane_has_speed_limit = speed_limit["lane_has_speed_limit"]
+    lane_speed_limit = speed_limit["lane_speed_limit"]
 
     # trim or zero-pad elements to maintain fixed size
     coords_array = np.zeros((max_elements, max_points, 2), dtype=np.float64)
@@ -191,11 +218,12 @@ def _convert_lane_to_fixed_size(ego_pose, feature_coords, speed_limit, lane_rout
     lane_has_speed_limit_array = np.zeros((max_elements, 1), dtype=np.bool_)
     lane_speed_limit_array = np.zeros((max_elements, 1), dtype=np.float32)
     lane_routes = []
-        
+
     avails_array = np.zeros((max_elements, max_points), dtype=np.bool_)
     tl_data_array = (
         np.zeros((max_elements, max_points, traffic_light_encoding_dim), dtype=np.float32)
-        if feature_tl_data is not None else None
+        if feature_tl_data is not None
+        else None
     )
 
     # get elements according to the mean distance to the ego pose
@@ -230,10 +258,21 @@ def _convert_lane_to_fixed_size(ego_pose, feature_coords, speed_limit, lane_rout
         if tl_data_array is not None and feature_tl_data is not None:
             tl_data_array[idx] = feature_tl_data[element_idx[0]]
 
-    return coords_array, left_array, right_array, tl_data_array, avails_array, lane_has_speed_limit_array, lane_speed_limit_array, lane_routes
+    return (
+        coords_array,
+        left_array,
+        right_array,
+        tl_data_array,
+        avails_array,
+        lane_has_speed_limit_array,
+        lane_speed_limit_array,
+        lane_routes,
+    )
 
 
-def _prune_route_by_connectivity(route_roadblock_ids: List[str], roadblock_ids: Set[str]) -> List[str]:
+def _prune_route_by_connectivity(
+    route_roadblock_ids: List[str], roadblock_ids: Set[str]
+) -> List[str]:
     """
     Prune route by overlap with extracted roadblock elements within query radius to maintain connectivity in route
     feature. Assumes route_roadblock_ids is ordered and connected to begin with.
@@ -242,10 +281,11 @@ def _prune_route_by_connectivity(route_roadblock_ids: List[str], roadblock_ids: 
     :return: List of pruned roadblock ids (connected and within query radius).
     """
     pruned_route_roadblock_ids: List[str] = []
-    route_start = False  # wait for route to come into query radius before declaring broken connection
+    route_start = (
+        False  # wait for route to come into query radius before declaring broken connection
+    )
 
     for roadblock_id in route_roadblock_ids:
-
         if roadblock_id in roadblock_ids:
             pruned_route_roadblock_ids.append(roadblock_id)
             route_start = True
@@ -261,28 +301,43 @@ def _lane_polyline_process(polylines, left_boundary, right_boundary, avails, tra
     new_polylines = np.zeros(shape=(polylines.shape[0], polylines.shape[1], dim), dtype=np.float32)
 
     for i in range(polylines.shape[0]):
-        if avails[i][0]: 
+        if avails[i][0]:
             polyline = polylines[i]
-            polyline_vector = polyline[1:]-polyline[:-1]
-            polyline_vector = np.insert(polyline_vector, polyline_vector.shape[0] , 0, axis=0)
+            polyline_vector = polyline[1:] - polyline[:-1]
+            polyline_vector = np.insert(polyline_vector, polyline_vector.shape[0], 0, axis=0)
 
-            if np.linalg.norm(left_boundary[i, -1] - polyline[0]) < np.linalg.norm(left_boundary[i, 0] - polyline[0]):
+            if np.linalg.norm(left_boundary[i, -1] - polyline[0]) < np.linalg.norm(
+                left_boundary[i, 0] - polyline[0]
+            ):
                 left_boundary[i] = np.flip(left_boundary[i], axis=0)
 
-            if np.linalg.norm(right_boundary[i, -1] - polyline[0]) < np.linalg.norm(right_boundary[i, 0] - polyline[0]):
+            if np.linalg.norm(right_boundary[i, -1] - polyline[0]) < np.linalg.norm(
+                right_boundary[i, 0] - polyline[0]
+            ):
                 right_boundary[i] = np.flip(right_boundary[i], axis=0)
 
             polyline_to_left = left_boundary[i] - polyline
             polyline_to_right = right_boundary[i] - polyline
 
-
-            new_polylines[i] = np.concatenate([polyline, polyline_vector, polyline_to_left, polyline_to_right, traffic_light[i]], axis=-1)  
+            new_polylines[i] = np.concatenate(
+                [polyline, polyline_vector, polyline_to_left, polyline_to_right, traffic_light[i]],
+                axis=-1,
+            )
 
     return new_polylines
 
 
-
-def map_process(route_roadblock_ids, anchor_ego_state, coords, traffic_light_data, speed_limit, lane_route, map_features, max_elements, max_points):
+def map_process(
+    route_roadblock_ids,
+    anchor_ego_state,
+    coords,
+    traffic_light_data,
+    speed_limit,
+    lane_route,
+    map_features,
+    max_elements,
+    max_points,
+):
     """
     This function process the data from the raw vector set map data.
     :param route_roadblock_ids: route road block ids.
@@ -322,7 +377,7 @@ def map_process(route_roadblock_ids, anchor_ego_state, coords, traffic_light_dat
             One-hot encoding of traffic light status for each point in a map element across map elements per sample.
             Encoding: green [1, 0, 0, 0] yellow [0, 1, 0, 0], red [0, 0, 1, 0], unknown [0, 0, 0, 1]
     """
-    
+
     array_output = {}
     traffic_light_encoding_dim = LaneSegmentTrafficLightData.encoding_dim()
 
@@ -336,42 +391,59 @@ def map_process(route_roadblock_ids, anchor_ego_state, coords, traffic_light_dat
                 else None
             )
 
-            if feature_name == 'LANE':
-                coords, left_coords, right_coords, tl_data, avails, lane_has_speed_limit_array, lane_speed_limit_array, lane_routes = _convert_lane_to_fixed_size(
-                        anchor_ego_state,
-                        feature_coords,
-                        speed_limit,
-                        lane_route,
-                        list_array_data[f"coords.LEFT_BOUNDARY"],
-                        list_array_data[f"coords.RIGHT_BOUNDARY"],
-                        feature_tl_data,
-                        max_elements[feature_name],
-                        max_points[feature_name],
-                        traffic_light_encoding_dim
-                        if feature_name
-                        in [
-                            VectorFeatureLayer.LANE.name,
-                        ]
-                        else None,
+            if feature_name == "LANE":
+                (
+                    coords,
+                    left_coords,
+                    right_coords,
+                    tl_data,
+                    avails,
+                    lane_has_speed_limit_array,
+                    lane_speed_limit_array,
+                    lane_routes,
+                ) = _convert_lane_to_fixed_size(
+                    anchor_ego_state,
+                    feature_coords,
+                    speed_limit,
+                    lane_route,
+                    list_array_data[f"coords.LEFT_BOUNDARY"],
+                    list_array_data[f"coords.RIGHT_BOUNDARY"],
+                    feature_tl_data,
+                    max_elements[feature_name],
+                    max_points[feature_name],
+                    traffic_light_encoding_dim
+                    if feature_name
+                    in [
+                        VectorFeatureLayer.LANE.name,
+                    ]
+                    else None,
                 )
-                left_coords = vector_set_coordinates_to_local_frame(left_coords, avails, anchor_ego_state)
-                right_coords = vector_set_coordinates_to_local_frame(right_coords, avails, anchor_ego_state)
+                left_coords = vector_set_coordinates_to_local_frame(
+                    left_coords, avails, anchor_ego_state
+                )
+                right_coords = vector_set_coordinates_to_local_frame(
+                    right_coords, avails, anchor_ego_state
+                )
                 array_output[f"vector_set_map.coords.LEFT_BOUNDARY"] = left_coords
                 array_output[f"vector_set_map.coords.RIGHT_BOUNDARY"] = right_coords
 
-                '''
+                """
                 Get roadblock polygon
-                '''
+                """
                 lane_on_route = []
-                pruned_lane_roadblock_ids = [route for route in route_roadblock_ids if route in lane_routes]
-                pruned_route_roadblock_ids = _prune_route_by_connectivity(route_roadblock_ids, pruned_lane_roadblock_ids)
+                pruned_lane_roadblock_ids = [
+                    route for route in route_roadblock_ids if route in lane_routes
+                ]
+                pruned_route_roadblock_ids = _prune_route_by_connectivity(
+                    route_roadblock_ids, pruned_lane_roadblock_ids
+                )
 
                 for route in lane_routes:
                     lane_on_route.append(route in pruned_route_roadblock_ids)
 
-            elif feature_name == 'LEFT_BOUNDARY' or feature_name == 'RIGHT_BOUNDARY':
+            elif feature_name == "LEFT_BOUNDARY" or feature_name == "RIGHT_BOUNDARY":
                 continue
-            
+
             coords = vector_set_coordinates_to_local_frame(coords, avails, anchor_ego_state)
 
             array_output[f"vector_set_map.coords.{feature_name}"] = coords
@@ -380,28 +452,36 @@ def map_process(route_roadblock_ids, anchor_ego_state, coords, traffic_light_dat
             if tl_data is not None:
                 array_output[f"vector_set_map.traffic_light_data.{feature_name}"] = tl_data
 
-
     """
     Post-precoss the map elements to different map types. Each map type is a array with the following shape.
     """
 
     for feature_name in map_features:
         if feature_name == "LANE":
-            polylines = array_output[f'vector_set_map.coords.{feature_name}']
+            polylines = array_output[f"vector_set_map.coords.{feature_name}"]
             left_boundary = array_output[f"vector_set_map.coords.LEFT_BOUNDARY"]
             right_boundary = array_output[f"vector_set_map.coords.RIGHT_BOUNDARY"]
-            traffic_light_state = array_output[f'vector_set_map.traffic_light_data.{feature_name}']
-            avails = array_output[f'vector_set_map.availabilities.{feature_name}']
-            vector_map_lanes = _lane_polyline_process(polylines, left_boundary, right_boundary, avails, traffic_light_state)
+            traffic_light_state = array_output[f"vector_set_map.traffic_light_data.{feature_name}"]
+            avails = array_output[f"vector_set_map.availabilities.{feature_name}"]
+            vector_map_lanes = _lane_polyline_process(
+                polylines, left_boundary, right_boundary, avails, traffic_light_state
+            )
 
         elif feature_name == "ROUTE_LANES":
             loc = 0
             # TODO: add has speed limit
-            vector_map_route_lanes = np.zeros((max_elements["ROUTE_LANES"], vector_map_lanes.shape[-2], vector_map_lanes.shape[-1]), dtype=np.float32)
+            vector_map_route_lanes = np.zeros(
+                (
+                    max_elements["ROUTE_LANES"],
+                    vector_map_lanes.shape[-2],
+                    vector_map_lanes.shape[-1],
+                ),
+                dtype=np.float32,
+            )
             route_lanes_speed_limit = np.zeros((max_elements["ROUTE_LANES"], 1), dtype=np.float32)
             route_lanes_has_speed_limit = np.zeros((max_elements["ROUTE_LANES"], 1), dtype=np.bool_)
             for i in range(len(lane_on_route)):
-                if lane_on_route[i] == True:
+                if lane_on_route[i]:
                     vector_map_route_lanes[loc] = vector_map_lanes[i]
                     route_lanes_speed_limit[loc] = lane_speed_limit_array[i]
                     route_lanes_has_speed_limit[loc] = lane_has_speed_limit_array[i]
@@ -411,8 +491,13 @@ def map_process(route_roadblock_ids, anchor_ego_state, coords, traffic_light_dat
         else:
             pass
 
-    vector_map_output = {'lanes': vector_map_lanes, 'lanes_speed_limit': lane_speed_limit_array, 'lanes_has_speed_limit': lane_has_speed_limit_array, \
-                         'route_lanes': vector_map_route_lanes, 'route_lanes_speed_limit': route_lanes_speed_limit, 'route_lanes_has_speed_limit': route_lanes_has_speed_limit}
+    vector_map_output = {
+        "lanes": vector_map_lanes,
+        "lanes_speed_limit": lane_speed_limit_array,
+        "lanes_has_speed_limit": lane_has_speed_limit_array,
+        "route_lanes": vector_map_route_lanes,
+        "route_lanes_speed_limit": route_lanes_speed_limit,
+        "route_lanes_has_speed_limit": route_lanes_has_speed_limit,
+    }
 
     return vector_map_output
-

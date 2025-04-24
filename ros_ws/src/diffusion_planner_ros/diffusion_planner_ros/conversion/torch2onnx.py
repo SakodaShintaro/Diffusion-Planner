@@ -1,15 +1,15 @@
-import copy
+import argparse
+import json
+import random
+
+import numpy as np
+import onnxruntime as ort
 import torch
 import torch.nn as nn
 from onnx_compatible_transformer import *
+
 from diffusion_planner.model.diffusion_planner import Diffusion_Planner
 from diffusion_planner.utils.config import Config
-import json
-import io
-import numpy as np
-import onnxruntime as ort
-import random
-import argparse
 
 torch.backends.mha.set_fastpath_enabled(False)
 
@@ -17,23 +17,21 @@ torch.backends.mha.set_fastpath_enabled(False)
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Convert torch model to onnx")
     parser.add_argument(
-        "--test_only", action="store_true",
-        help="If set, only test the output of the existing ONNX model")
+        "--test_only",
+        action="store_true",
+        help="If set, only test the output of the existing ONNX model",
+    )
 
-    parser.add_argument(
-        "--config", type=str, default="args.json", help="Config file path"
-    )
-    parser.add_argument(
-        "--ckpt", type=str, default="latest.pth", help="Checkpoint file path"
-    )
-    parser.add_argument(
-        "--onnx_path", type=str, default="model.onnx", help="ONNX model file path"
-    )
+    parser.add_argument("--config", type=str, default="args.json", help="Config file path")
+    parser.add_argument("--ckpt", type=str, default="latest.pth", help="Checkpoint file path")
+    parser.add_argument("--onnx_path", type=str, default="model.onnx", help="ONNX model file path")
     parser.add_argument(
         "--sample_input_path", type=str, default="sample_input.npz", help="Sample input path"
     )
     parser.add_argument(
-        "--wrap_with_onnx_functions", action="store_true", help="Wether to replace some original functions with onnx-friendly ones"
+        "--wrap_with_onnx_functions",
+        action="store_true",
+        help="Wether to replace some original functions with onnx-friendly ones",
     )
     args = parser.parse_args()
     return args
@@ -96,8 +94,7 @@ def compare_outputs(torch_output, onnx_output):
     abs_diff = np.abs(torch_output - onnx_output[0])
     print(f"Max diff: {abs_diff.max()}")
     print(f"Mean diff: {abs_diff.mean()}")
-    print(
-        f"Close? {np.allclose(torch_output, onnx_output[0], rtol=1e-03, atol=1e-05)}")
+    print(f"Close? {np.allclose(torch_output, onnx_output[0], rtol=1e-03, atol=1e-05)}")
 
 
 if __name__ == "__main__":
@@ -160,8 +157,7 @@ if __name__ == "__main__":
 
     ckpt = torch.load(ckpt_path)
     state_dict = ckpt["model"]
-    new_state_dict = {k.replace("module.", ""): v for k,
-                      v in state_dict.items()}
+    new_state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
     model.load_state_dict(new_state_dict)
 
     # Wrap model for onnx compatibility
@@ -183,9 +179,7 @@ if __name__ == "__main__":
             input_names=input_names,
             output_names=["output"],
             # dynamic_axes=None,
-            dynamic_axes={
-                name: {0: "batch"} for name in input_names
-            },  # optional, but useful
+            dynamic_axes={name: {0: "batch"} for name in input_names},  # optional, but useful
             opset_version=20,
         )
 
@@ -196,8 +190,7 @@ if __name__ == "__main__":
     sess_options = ort.SessionOptions()
     # sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
     ort_session = ort.InferenceSession(
-        onnx_path, sess_options, providers=[
-            "CUDAExecutionProvider", "CPUExecutionProvider"]
+        onnx_path, sess_options, providers=["CUDAExecutionProvider", "CPUExecutionProvider"]
     )
 
     onnx_inputs = create_input(dummy_inputs, "onnx")
@@ -210,9 +203,7 @@ if __name__ == "__main__":
     sample_input_file = np.load(sample_input_path)
     sample_input = {}
     for key in input_names:
-        sample_input[key] = (
-            torch.tensor(sample_input_file[key]).unsqueeze(0)
-        )
+        sample_input[key] = torch.tensor(sample_input_file[key]).unsqueeze(0)
 
     sample_input = config_obj.observation_normalizer(sample_input)
 

@@ -1,21 +1,20 @@
 import argparse
+import json
+from pathlib import Path
+
+import numpy as np
 import torch
-from torch.utils.data import DataLoader
 from timm.utils import ModelEma
+from torch import optim
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data import DataLoader, DistributedSampler
 
 from diffusion_planner.model.diffusion_planner import Diffusion_Planner
-from diffusion_planner.utils.dataset import DiffusionPlannerData
-from diffusion_planner.utils.train_utils import set_seed, resume_model
-from diffusion_planner.utils.lr_schedule import CosineAnnealingWarmUpRestarts
-from diffusion_planner.utils.config import Config
 from diffusion_planner.utils import ddp
-
-from torch import optim
-from torch.utils.data import DistributedSampler
-from torch.nn.parallel import DistributedDataParallel as DDP
-import json
-import numpy as np
-from pathlib import Path
+from diffusion_planner.utils.config import Config
+from diffusion_planner.utils.dataset import DiffusionPlannerData
+from diffusion_planner.utils.lr_schedule import CosineAnnealingWarmUpRestarts
+from diffusion_planner.utils.train_utils import resume_model, set_seed
 
 
 def validate_model(model, val_loader, args, return_pred=False) -> tuple[float, float]:
@@ -132,16 +131,10 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # Data
-    parser.add_argument(
-        "--train_set", type=str, help="path to train data", default=None
-    )
-    parser.add_argument(
-        "--train_set_list", type=str, help="data list of train data", default=None
-    )
+    parser.add_argument("--train_set", type=str, help="path to train data", default=None)
+    parser.add_argument("--train_set_list", type=str, help="data list of train data", default=None)
 
-    parser.add_argument(
-        "--future_len", type=int, help="number of time point", default=80
-    )
+    parser.add_argument("--future_len", type=int, help="number of time point", default=80)
     parser.add_argument("--agent_num", type=int, help="number of agents", default=32)
 
     # DataLoader parameters
@@ -156,12 +149,8 @@ def get_args():
 
     # Training
     parser.add_argument("--seed", type=int, help="fix random seed", default=3407)
-    parser.add_argument(
-        "--train_epochs", type=int, help="epochs of training", default=500
-    )
-    parser.add_argument(
-        "--batch_size", type=int, help="batch size (default: 2048)", default=1024
-    )
+    parser.add_argument("--train_epochs", type=int, help="epochs of training", default=500)
+    parser.add_argument("--batch_size", type=int, help="batch size (default: 2048)", default=1024)
 
     parser.add_argument(
         "--device", type=str, help="run on which device (default: cuda)", default="cuda"
@@ -174,12 +163,8 @@ def get_args():
         help="number of neighbor agents to predict",
         default=10,
     )
-    parser.add_argument(
-        "--resume_model_path", type=str, help="path to resume model", required=True
-    )
-    parser.add_argument(
-        "--args_json_path", type=str, help="path to resume model", required=True
-    )
+    parser.add_argument("--resume_model_path", type=str, help="path to resume model", required=True)
+    parser.add_argument("--args_json_path", type=str, help="path to resume model", required=True)
     parser.add_argument(
         "--save_predictions_dir", type=str, help="path to save prediction", default=None
     )
@@ -246,22 +231,15 @@ if __name__ == "__main__":
 
     # set up model
     diffusion_planner = Diffusion_Planner(config_obj)
-    diffusion_planner = diffusion_planner.to(
-        rank if args.device == "cuda" else args.device
-    )
+    diffusion_planner = diffusion_planner.to(rank if args.device == "cuda" else args.device)
 
     if args.ddp:
-        diffusion_planner = DDP(
-            diffusion_planner, device_ids=[rank], find_unused_parameters=False
-        )
+        diffusion_planner = DDP(diffusion_planner, device_ids=[rank], find_unused_parameters=False)
 
     if global_rank == 0:
         print(
             "Model Params: {}".format(
-                sum(
-                    p.numel()
-                    for p in ddp.get_model(diffusion_planner, args.ddp).parameters()
-                )
+                sum(p.numel() for p in ddp.get_model(diffusion_planner, args.ddp).parameters())
             )
         )
 
@@ -283,15 +261,13 @@ if __name__ == "__main__":
             decay=0.999,
             device=args.device,
         )
-        diffusion_planner, optimizer, scheduler, init_epoch, wandb_id, model_ema = (
-            resume_model(
-                args.resume_model_path,
-                diffusion_planner,
-                optimizer,
-                scheduler,
-                model_ema,
-                args.device,
-            )
+        diffusion_planner, optimizer, scheduler, init_epoch, wandb_id, model_ema = resume_model(
+            args.resume_model_path,
+            diffusion_planner,
+            optimizer,
+            scheduler,
+            model_ema,
+            args.device,
         )
     else:
         init_epoch = 0

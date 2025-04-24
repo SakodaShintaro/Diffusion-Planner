@@ -1,12 +1,13 @@
 import argparse
+import json
+import time
 from pathlib import Path
+
+import numpy as np
+import torch
+
 from diffusion_planner.model.diffusion_planner import Diffusion_Planner
 from diffusion_planner.utils.config import Config
-import io
-import json
-import torch
-import time
-import numpy as np
 
 
 def parse_args():
@@ -44,12 +45,8 @@ if __name__ == "__main__":
         "neighbor_agents_past": torch.zeros((batch_size, 32, 21, 11), device=dev),
         "lanes": torch.zeros((batch_size, 70, 20, 12), dtype=torch.float32, device=dev),
         "lanes_speed_limit": torch.zeros((batch_size, 70, 1), device=dev),
-        "lanes_has_speed_limit": torch.zeros(
-            (batch_size, 70, 1), dtype=torch.bool, device=dev
-        ),
-        "route_lanes": torch.zeros(
-            (batch_size, 25, 20, 12), dtype=torch.float32, device="cuda"
-        ),
+        "lanes_has_speed_limit": torch.zeros((batch_size, 70, 1), dtype=torch.bool, device=dev),
+        "route_lanes": torch.zeros((batch_size, 25, 20, 12), dtype=torch.float32, device="cuda"),
         "route_lanes_speed_limit": torch.zeros((batch_size, 25, 1), device=dev),
         "route_lanes_has_speed_limit": torch.zeros(
             (batch_size, 25, 1), dtype=torch.bool, device=dev

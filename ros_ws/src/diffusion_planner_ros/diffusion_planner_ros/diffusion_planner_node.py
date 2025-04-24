@@ -5,10 +5,9 @@ import json
 import time
 
 import numpy as np
+import onnxruntime as ort
 import rclpy
 import torch
-import onnxruntime as ort
-
 from autoware_perception_msgs.msg import TrackedObjects, TrafficLightGroupArray
 from autoware_planning_msgs.msg import LaneletRoute, Trajectory
 from geometry_msgs.msg import AccelWithCovarianceStamped
@@ -54,15 +53,12 @@ class DiffusionPlannerNode(Node):
         # Parameters #
         ##############
         # param(1) vector_map
-        vector_map_path = self.declare_parameter(
-            "vector_map_path", value="None").value
+        vector_map_path = self.declare_parameter("vector_map_path", value="None").value
         self.get_logger().info(f"Vector map path: {vector_map_path}")
         self.static_map = convert_lanelet(vector_map_path)
 
         # param(2) config
-        config_json_path = self.declare_parameter(
-            "config_json_path", value="None"
-        ).value
+        config_json_path = self.declare_parameter("config_json_path", value="None").value
         self.get_logger().info(f"Config JSON: {config_json_path}")
         with open(config_json_path, "r") as f:
             config_json = json.load(f)
@@ -75,26 +71,26 @@ class DiffusionPlannerNode(Node):
         print(f"{self.config_obj.state_normalizer=}")
 
         # param(3) checkpoint
-        self.backend = self.declare_parameter(
-            "backend", value="PYTHORCH").value
+        self.backend = self.declare_parameter("backend", value="PYTHORCH").value
 
         if self.backend == "PYTHORCH":
             ckpt_path = self.declare_parameter("ckpt_path", value="None").value
             self.get_logger().info(f"Checkpoint path: {ckpt_path}")
             ckpt = torch.load(ckpt_path)
             state_dict = ckpt["model"]
-            new_state_dict = {
-                k.replace("module.", ""): v for k, v in state_dict.items()}
+            new_state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
             self.diffusion_planner.load_state_dict(new_state_dict)
         elif self.backend == "ONNXRUNTIME":
             onnx_path = self.declare_parameter("onnx_path", value="None").value
             sess_options = ort.SessionOptions()
             sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
             self.ort_session = ort.InferenceSession(
-                onnx_path, sess_options, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+                onnx_path, sess_options, providers=["CUDAExecutionProvider", "CPUExecutionProvider"]
+            )
         else:
             self.get_logger().error(
-                f"backend must be PYTHORCH or ONNXRUNTIME, but {self.backend} was given")
+                f"backend must be PYTHORCH or ONNXRUNTIME, but {self.backend} was given"
+            )
             exit()
 
         # param(4) wheel_base
@@ -224,13 +220,11 @@ class DiffusionPlannerNode(Node):
         stamp = msg.header.stamp
         # stamp = self.get_clock().now().to_msg()
 
-        curr_kinematic_state, idx = get_nearest_msg(
-            self.kinematic_state_list, stamp)
+        curr_kinematic_state, idx = get_nearest_msg(self.kinematic_state_list, stamp)
         self.kinematic_state_list = self.kinematic_state_list[idx:]
         curr_acceleration, idx = get_nearest_msg(self.acceleration_list, stamp)
         self.acceleration_list = self.acceleration_list[idx:]
-        curr_traffic_light, idx = get_nearest_msg(
-            self.traffic_light_list, stamp)
+        curr_traffic_light, idx = get_nearest_msg(self.traffic_light_list, stamp)
         self.traffic_light_list = self.traffic_light_list[idx:]
 
         if curr_kinematic_state is None:
@@ -240,14 +234,10 @@ class DiffusionPlannerNode(Node):
             self.get_logger().warn("No acceleration message found")
             return
 
-        bl2map_matrix_4x4, map2bl_matrix_4x4 = get_transform_matrix(
-            curr_kinematic_state
-        )
+        bl2map_matrix_4x4, map2bl_matrix_4x4 = get_transform_matrix(curr_kinematic_state)
         traffic_light_recognition = {}
         if curr_traffic_light is not None:
-            traffic_light_recognition = parse_traffic_light_recognition(
-                curr_traffic_light
-            )
+            traffic_light_recognition = parse_traffic_light_recognition(curr_traffic_light)
 
         # Ego
         start = time.time()
@@ -330,8 +320,7 @@ class DiffusionPlannerNode(Node):
             for key in input_dict.keys():
                 s = input_dict[key].shape
                 ones = [1] * (len(s) - 1)
-                input_dict[key] = input_dict[key].repeat(
-                    self.batch_size, *ones)
+                input_dict[key] = input_dict[key].repeat(self.batch_size, *ones)
                 input_dict[key] = input_dict[key]
 
         input_dict = self.config_obj.observation_normalizer(input_dict)
@@ -340,8 +329,9 @@ class DiffusionPlannerNode(Node):
             for key in input_dict.keys():
                 input_dict[key] = input_dict[key].cpu().numpy()
 
-            input_dict['lanes_has_speed_limit'] = input_dict['lanes_has_speed_limit'].astype(
-                np.bool_)
+            input_dict["lanes_has_speed_limit"] = input_dict["lanes_has_speed_limit"].astype(
+                np.bool_
+            )
         # visualize_inputs(
         #     input_dict, self.config_obj.observation_normalizer, "./input.png"
         # )
@@ -361,13 +351,9 @@ class DiffusionPlannerNode(Node):
         # Publish
         for b in range(0, self.batch_size):
             curr_pred = pred[b, 0]
-            curr_heading = np.arctan2(
-                curr_pred[:, 3], curr_pred[:, 2])[..., None]
-            curr_pred = np.concatenate(
-                [curr_pred[..., :2], curr_heading], axis=-1)
-            trajectory_msg = convert_prediction_to_msg(
-                curr_pred, bl2map_matrix_4x4, stamp
-            )
+            curr_heading = np.arctan2(curr_pred[:, 3], curr_pred[:, 2])[..., None]
+            curr_pred = np.concatenate([curr_pred[..., :2], curr_heading], axis=-1)
+            trajectory_msg = convert_prediction_to_msg(curr_pred, bl2map_matrix_4x4, stamp)
             curr_marker_array = create_trajectory_marker(trajectory_msg)
             for i in range(len(curr_marker_array.markers)):
                 curr_marker_array.markers[i].id += b

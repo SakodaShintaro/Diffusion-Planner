@@ -1,8 +1,8 @@
 """This script performes recursive glob *.npz files and creates a train set path file."""
 
 import argparse
-from pathlib import Path
 import json
+from pathlib import Path
 
 
 def parse_args() -> argparse.Namespace:

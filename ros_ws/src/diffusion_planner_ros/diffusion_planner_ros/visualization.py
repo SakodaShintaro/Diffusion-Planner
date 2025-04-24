@@ -1,12 +1,12 @@
 """Make markers to visualize in rviz."""
 
+import numpy as np
 import torch
 from builtin_interfaces.msg import Duration
 from geometry_msgs.msg import Point
+from scipy.spatial.transform import Rotation
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
-from scipy.spatial.transform import Rotation
-import numpy as np
 
 
 def create_trajectory_marker(trajectory_msg):

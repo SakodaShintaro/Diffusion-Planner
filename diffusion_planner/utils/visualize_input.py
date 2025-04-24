@@ -1,13 +1,13 @@
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from pathlib import Path
+
 from diffusion_planner.utils.normalizer import ObservationNormalizer
 
 
-def visualize_inputs(
-    inputs: dict, obs_normalizer: ObservationNormalizer, save_path: Path
-):
+def visualize_inputs(inputs: dict, obs_normalizer: ObservationNormalizer, save_path: Path):
     """
     draw the input data of the diffusion_planner model on the xy plane
     """

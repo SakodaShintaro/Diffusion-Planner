@@ -1,19 +1,20 @@
-import numpy as np
 from collections import deque
-from typing import Dict, Optional, Tuple, Union, List
+from typing import Dict, List, Optional, Tuple, Union
 
+import numpy as np
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2
 from nuplan.common.maps.abstract_map import AbstractMap
 from nuplan.common.maps.abstract_map_objects import RoadBlockGraphEdgeMapObject
 from nuplan.common.maps.maps_datatypes import SemanticMapLayer
-from nuplan.planning.simulation.occupancy_map.strtree_occupancy_map import STRTreeOccupancyMapFactory
-from nuplan.common.maps.abstract_map import AbstractMap
-from nuplan.common.maps.abstract_map_objects import RoadBlockGraphEdgeMapObject
+from nuplan.planning.simulation.occupancy_map.strtree_occupancy_map import (
+    STRTreeOccupancyMapFactory,
+)
 
 
 def normalize_angle(angle: np.ndarray):
     return (angle + np.pi) % (2 * np.pi) - np.pi
+
 
 class BreadthFirstSearchRoadBlock:
     """
@@ -274,9 +275,7 @@ def route_roadblock_correction(
     route_roadblock_dict = {}
     for id_ in route_roadblock_ids:
         block = map_api.get_map_object(id_, SemanticMapLayer.ROADBLOCK)
-        block = block or map_api.get_map_object(
-            id_, SemanticMapLayer.ROADBLOCK_CONNECTOR
-        )
+        block = block or map_api.get_map_object(id_, SemanticMapLayer.ROADBLOCK_CONNECTOR)
         route_roadblock_dict[id_] = block
 
     starting_block, starting_block_candidates = get_current_roadblock_candidates(
@@ -311,9 +310,7 @@ def route_roadblock_correction(
             )
 
             if path_found:
-                end_roadblock_idx = np.argmax(
-                    np.array(route_roadblock_ids) == path_id[-1]
-                )
+                end_roadblock_idx = np.argmax(np.array(route_roadblock_ids) == path_id[-1])
 
                 route_roadblocks = route_roadblocks[end_roadblock_idx + 1 :]
                 route_roadblock_ids = route_roadblock_ids[end_roadblock_idx + 1 :]

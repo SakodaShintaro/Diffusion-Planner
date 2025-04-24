@@ -1,6 +1,8 @@
-import numpy as np
-from pathlib import Path
 import argparse
+from pathlib import Path
+
+import numpy as np
+
 
 def parse_args():
     parser = argparse.ArgumentParser()

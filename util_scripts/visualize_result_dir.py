@@ -1,8 +1,9 @@
-import pandas as pd
-import matplotlib.pyplot as plt
-import os
 import argparse
+import os
 from pathlib import Path
+
+import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def parse_args():

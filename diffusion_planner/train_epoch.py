@@ -1,14 +1,14 @@
-from tqdm import tqdm
 import torch
 from torch import nn
+from tqdm import tqdm
 
-from diffusion_planner.utils.data_augmentation import StatePerturbation   
-from diffusion_planner.utils.train_utils import get_epoch_mean_loss
-from diffusion_planner.utils import ddp
 from diffusion_planner.loss import diffusion_loss_func
+from diffusion_planner.utils import ddp
+from diffusion_planner.utils.data_augmentation import StatePerturbation
+from diffusion_planner.utils.train_utils import get_epoch_mean_loss
 
 
-def train_epoch(data_loader, model, optimizer, args, ema, aug: StatePerturbation=None):
+def train_epoch(data_loader, model, optimizer, args, ema, aug: StatePerturbation = None):
     epoch_loss = []
 
     model.train()
@@ -18,7 +18,7 @@ def train_epoch(data_loader, model, optimizer, args, ema, aug: StatePerturbation
 
     with tqdm(data_loader, desc="Training", unit="batch") as data_epoch:
         for batch in data_epoch:
-            '''
+            """
             data structure in batch: Tuple(Tensor) 
 
             ego_current_state,
@@ -37,24 +37,19 @@ def train_epoch(data_loader, model, optimizer, args, ema, aug: StatePerturbation
 
             static_objects,
 
-            '''
+            """
 
             # prepare data
             inputs = {
-                'ego_current_state': batch[0].to(args.device),
-
-                'neighbor_agents_past': batch[2].to(args.device),
-
-                'lanes': batch[4].to(args.device),
-                'lanes_speed_limit': batch[5].to(args.device),
-                'lanes_has_speed_limit': batch[6].to(args.device),
-
-                'route_lanes': batch[7].to(args.device),
-                'route_lanes_speed_limit': batch[8].to(args.device),
-                'route_lanes_has_speed_limit': batch[9].to(args.device),
-
-                'static_objects': batch[10].to(args.device)
-
+                "ego_current_state": batch[0].to(args.device),
+                "neighbor_agents_past": batch[2].to(args.device),
+                "lanes": batch[4].to(args.device),
+                "lanes_speed_limit": batch[5].to(args.device),
+                "lanes_has_speed_limit": batch[6].to(args.device),
+                "route_lanes": batch[7].to(args.device),
+                "route_lanes_speed_limit": batch[8].to(args.device),
+                "route_lanes_has_speed_limit": batch[9].to(args.device),
+                "static_objects": batch[10].to(args.device),
             }
 
             ego_future = batch[1].to(args.device)
@@ -65,28 +60,26 @@ def train_epoch(data_loader, model, optimizer, args, ema, aug: StatePerturbation
 
             # heading to cos sin
             ego_future = torch.cat(
-            [
-                ego_future[..., :2],
-                torch.stack(
-                    [ego_future[..., 2].cos(), ego_future[..., 2].sin()], dim=-1
-                ),
-            ],
-            dim=-1,
+                [
+                    ego_future[..., :2],
+                    torch.stack([ego_future[..., 2].cos(), ego_future[..., 2].sin()], dim=-1),
+                ],
+                dim=-1,
             )
 
             mask = torch.sum(torch.ne(neighbors_future[..., :3], 0), dim=-1) == 0
             neighbors_future = torch.cat(
-            [
-                neighbors_future[..., :2],
-                torch.stack(
-                    [neighbors_future[..., 2].cos(), neighbors_future[..., 2].sin()], dim=-1
-                ),
-            ],
-            dim=-1,
+                [
+                    neighbors_future[..., :2],
+                    torch.stack(
+                        [neighbors_future[..., 2].cos(), neighbors_future[..., 2].sin()], dim=-1
+                    ),
+                ],
+                dim=-1,
             )
-            neighbors_future[mask] = 0.
+            neighbors_future[mask] = 0.0
             inputs = args.observation_normalizer(inputs)
-                  
+
             # call the mdoel
             optimizer.zero_grad()
             loss = {}
@@ -98,15 +91,18 @@ def train_epoch(data_loader, model, optimizer, args, ema, aug: StatePerturbation
                 (ego_future, neighbors_future, mask),
                 args.state_normalizer,
                 loss,
-                args.diffusion_model_type
+                args.diffusion_model_type,
             )
 
-            loss['loss'] = loss['neighbor_prediction_loss'] + args.alpha_planning_loss * loss['ego_planning_loss']
+            loss["loss"] = (
+                loss["neighbor_prediction_loss"]
+                + args.alpha_planning_loss * loss["ego_planning_loss"]
+            )
 
-            total_loss = loss['loss'].item()
+            total_loss = loss["loss"].item()
 
             # loss backward
-            loss['loss'].backward()
+            loss["loss"].backward()
 
             nn.utils.clip_grad_norm_(model.parameters(), 5)
             optimizer.step()
@@ -115,8 +111,8 @@ def train_epoch(data_loader, model, optimizer, args, ema, aug: StatePerturbation
 
             if args.ddp:
                 torch.cuda.synchronize()
-            
-            data_epoch.set_postfix(loss='{:.4f}'.format(total_loss))
+
+            data_epoch.set_postfix(loss="{:.4f}".format(total_loss))
             epoch_loss.append(loss)
 
     epoch_mean_loss = get_epoch_mean_loss(epoch_loss)
@@ -126,5 +122,5 @@ def train_epoch(data_loader, model, optimizer, args, ema, aug: StatePerturbation
 
     if ddp.get_rank() == 0:
         print(f"epoch train loss: {epoch_mean_loss['loss']:.4f}\n")
-        
-    return epoch_mean_loss, epoch_mean_loss['loss']
+
+    return epoch_mean_loss, epoch_mean_loss["loss"]

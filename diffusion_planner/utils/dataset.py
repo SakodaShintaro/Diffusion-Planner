@@ -1,7 +1,8 @@
-from torch.utils.data import Dataset
 import numpy as np
+from torch.utils.data import Dataset
 
 from diffusion_planner.utils.train_utils import openjson
+
 
 class DiffusionPlannerData(Dataset):
     def __init__(self, data_list, past_neighbor_num, predicted_neighbor_num, future_len):
@@ -14,25 +15,23 @@ class DiffusionPlannerData(Dataset):
         return len(self.data_list)
 
     def __getitem__(self, idx):
-
         data = np.load(self.data_list[idx], allow_pickle=True)
 
-        ego_current_state = data['ego_current_state']
-        ego_agent_future = data['ego_agent_future'].astype(np.float32)
+        ego_current_state = data["ego_current_state"]
+        ego_agent_future = data["ego_agent_future"].astype(np.float32)
 
+        neighbor_agents_past = data["neighbor_agents_past"][: self._past_neighbor_num]
+        neighbor_agents_future = data["neighbor_agents_future"][: self._predicted_neighbor_num]
 
-        neighbor_agents_past = data['neighbor_agents_past'][:self._past_neighbor_num]
-        neighbor_agents_future = data['neighbor_agents_future'][:self._predicted_neighbor_num]
+        lanes = data["lanes"]
+        lanes_speed_limit = data["lanes_speed_limit"]
+        lanes_has_speed_limit = data["lanes_has_speed_limit"]
 
-        lanes = data['lanes']
-        lanes_speed_limit = data['lanes_speed_limit']
-        lanes_has_speed_limit = data['lanes_has_speed_limit']
+        route_lanes = data["route_lanes"]
+        route_lanes_speed_limit = data["route_lanes_speed_limit"]
+        route_lanes_has_speed_limit = data["route_lanes_has_speed_limit"]
 
-        route_lanes = data['route_lanes']
-        route_lanes_speed_limit = data['route_lanes_speed_limit']
-        route_lanes_has_speed_limit = data['route_lanes_has_speed_limit']
-
-        static_objects = data['static_objects']
+        static_objects = data["static_objects"]
 
         data = {
             "ego_current_state": ego_current_state,

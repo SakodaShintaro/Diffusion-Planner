@@ -1,31 +1,32 @@
 import argparse
-from pathlib import Path
-import rosbag2_py
-from rclpy.serialization import deserialize_message
-from rosidl_runtime_py.utilities import get_message
 from collections import defaultdict
-import numpy as np
-from diffusion_planner_ros.lanelet2_utils.lanelet_converter import (
-    convert_lanelet,
-    create_lane_tensor,
-)
-from diffusion_planner_ros.utils import (
-    create_current_ego_state,
-    get_nearest_msg,
-    parse_timestamp,
-    tracking_one_step,
-    convert_tracked_objects_to_tensor,
-    get_transform_matrix,
-    parse_traffic_light_recognition,
-)
 from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np
+import rosbag2_py
 from autoware_perception_msgs.msg import (
     TrackedObjects,
     TrafficLightGroupArray,
 )
 from autoware_planning_msgs.msg import LaneletRoute
-from nav_msgs.msg import Odometry
+from diffusion_planner_ros.lanelet2_utils.lanelet_converter import (
+    convert_lanelet,
+    create_lane_tensor,
+)
+from diffusion_planner_ros.utils import (
+    convert_tracked_objects_to_tensor,
+    create_current_ego_state,
+    get_nearest_msg,
+    get_transform_matrix,
+    parse_timestamp,
+    parse_traffic_light_recognition,
+    tracking_one_step,
+)
 from geometry_msgs.msg import AccelWithCovarianceStamped
+from nav_msgs.msg import Odometry
+from rclpy.serialization import deserialize_message
+from rosidl_runtime_py.utilities import get_message
 from scipy.spatial.transform import Rotation
 from tqdm import tqdm
 
@@ -115,9 +116,7 @@ if __name__ == "__main__":
 
     # parse rosbag
     serialization_format = "cdr"
-    storage_options = rosbag2_py.StorageOptions(
-        uri=str(rosbag_path), storage_id="sqlite3"
-    )
+    storage_options = rosbag2_py.StorageOptions(uri=str(rosbag_path), storage_id="sqlite3")
     converter_options = rosbag2_py.ConverterOptions(
         input_serialization_format=serialization_format,
         output_serialization_format=serialization_format,
@@ -127,9 +126,7 @@ if __name__ == "__main__":
     reader.open(storage_options, converter_options)
 
     topic_types = reader.get_all_topics_and_types()
-    type_map = {
-        topic_types[i].name: topic_types[i].type for i in range(len(topic_types))
-    }
+    type_map = {topic_types[i].name: topic_types[i].type for i in range(len(topic_types))}
 
     target_topic_list = [
         "/localization/kinematic_state",
@@ -166,9 +163,7 @@ if __name__ == "__main__":
     print(f"{n=}")
     progress_bar = tqdm(total=n)
     for i in range(n):
-        tracking = topic_name_to_data[
-            "/perception/object_recognition/tracking/objects"
-        ][i]
+        tracking = topic_name_to_data["/perception/object_recognition/tracking/objects"][i]
         timestamp = parse_timestamp(tracking.header.stamp)
         latest_msgs = {
             "/localization/kinematic_state": None,
@@ -178,24 +173,18 @@ if __name__ == "__main__":
 
         ok = True
         for key in latest_msgs.keys():
-            curr_msg, curr_index = get_nearest_msg(
-                topic_name_to_data[key], tracking.header.stamp
-            )
+            curr_msg, curr_index = get_nearest_msg(topic_name_to_data[key], tracking.header.stamp)
             if curr_msg is None:
                 print(f"Cannot find {key} msg")
                 ok = False
                 break
             topic_name_to_data[key] = topic_name_to_data[key][curr_index:]
             latest_msgs[key] = curr_msg
-            msg_stamp = (
-                curr_msg.header.stamp if hasattr(curr_msg, "header") else curr_msg.stamp
-            )
+            msg_stamp = curr_msg.header.stamp if hasattr(curr_msg, "header") else curr_msg.stamp
             msg_stamp_int = parse_timestamp(msg_stamp)
             diff = abs(timestamp - msg_stamp_int)
             if diff > int(0.1 * 1e9):
-                print(
-                    f"Over 100 msec: {key} {len(topic_name_to_data[key])=}, {diff=:,}"
-                )
+                print(f"Over 100 msec: {key} {len(topic_name_to_data[key])=}, {diff=:,}")
                 ok = False
 
         # check kinematic_state
@@ -295,17 +284,11 @@ if __name__ == "__main__":
 
             # 2 sec tracking (for input)
             tracking_past = tracking_list(
-                [
-                    frame_data.tracked_objects
-                    for frame_data in data_list[i - PAST_TIME_STEPS : i]
-                ]
+                [frame_data.tracked_objects for frame_data in data_list[i - PAST_TIME_STEPS : i]]
             )
             # 8 sec tracking (for ground truth)
             tracking_future = tracking_list(
-                [
-                    frame_data.tracked_objects
-                    for frame_data in data_list[i : i + FUTURE_TIME_STEPS]
-                ]
+                [frame_data.tracked_objects for frame_data in data_list[i : i + FUTURE_TIME_STEPS]]
             )
 
             # filter tracking_future by indices in tracking_past
@@ -327,9 +310,7 @@ if __name__ == "__main__":
                 data_list[i].kinematic_state, data_list[i].acceleration, wheel_base=5.0
             ).squeeze(0)
 
-            ego_future_np = create_ego_future(
-                data_list, i, FUTURE_TIME_STEPS, map2bl_matrix_4x4
-            )
+            ego_future_np = create_ego_future(data_list, i, FUTURE_TIME_STEPS, map2bl_matrix_4x4)
 
             neighbor_past_tensor = convert_tracked_objects_to_tensor(
                 tracked_objs=tracking_past,

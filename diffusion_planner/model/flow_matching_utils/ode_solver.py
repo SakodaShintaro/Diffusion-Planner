@@ -98,9 +98,7 @@ def rk4_integration(func, x, num_steps):
 
         # Update step: x_t+1 = x_t + (k1 + 2*k2 + 2*k3 + k4) * dt / 6
         x = x.reshape(B, P, -1, 4)
-        x[:, :, 1:] += (
-            (k1[:, :, 1:] + 2 * k2[:, :, 1:] + 2 * k3[:, :, 1:] + k4[:, :, 1:]) * dt / 6
-        )
+        x[:, :, 1:] += (k1[:, :, 1:] + 2 * k2[:, :, 1:] + 2 * k3[:, :, 1:] + k4[:, :, 1:]) * dt / 6
         x = x.reshape(B, P, -1)
 
     return x

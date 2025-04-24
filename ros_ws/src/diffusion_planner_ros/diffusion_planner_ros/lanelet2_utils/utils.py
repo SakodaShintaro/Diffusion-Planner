@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from enum import Enum
 from typing import Any
+
 import numpy as np
 
 __all__ = ("custom_as_dict",)

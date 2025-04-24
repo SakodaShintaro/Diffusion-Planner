@@ -99,12 +99,8 @@ def rot3x3_to_heading_cos_sin(rot3x3):
 def create_current_ego_state(kinematic_state_msg, acceleration_msg, wheel_base):
     ego_twist_linear = kinematic_state_msg.twist.twist.linear
     ego_twist_angular = kinematic_state_msg.twist.twist.angular
-    ego_twist_linear = np.array(
-        [ego_twist_linear.x, ego_twist_linear.y, ego_twist_linear.z]
-    )
-    ego_twist_angular = np.array(
-        [ego_twist_angular.x, ego_twist_angular.y, ego_twist_angular.z]
-    )
+    ego_twist_linear = np.array([ego_twist_linear.x, ego_twist_linear.y, ego_twist_linear.z])
+    ego_twist_angular = np.array([ego_twist_angular.x, ego_twist_angular.y, ego_twist_angular.z])
     linear_vel_norm = np.linalg.norm(ego_twist_linear)
     if abs(linear_vel_norm) < 0.2:
         yaw_rate = 0.0  # if the car is almost stopped, the yaw rate is unreliable
@@ -229,9 +225,7 @@ def tracking(tracked_list: list[TrackedObjects]):
     return updated_tracked_objs
 
 
-def convert_prediction_to_msg(
-    pred: torch.Tensor, bl2map_matrix_4x4: np.array, stamp
-) -> Trajectory:
+def convert_prediction_to_msg(pred: torch.Tensor, bl2map_matrix_4x4: np.array, stamp) -> Trajectory:
     # Convert to Trajectory message
     trajectory_msg = Trajectory()
     trajectory_msg.header.stamp = stamp

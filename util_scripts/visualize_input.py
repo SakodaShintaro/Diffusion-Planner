@@ -1,13 +1,15 @@
 import argparse
-from pathlib import Path
-from diffusion_planner.utils.visualize_input import visualize_inputs
-from diffusion_planner.utils.config import Config
 import json
+from multiprocessing import Pool
+from pathlib import Path
+from shutil import rmtree
+
 import numpy as np
 import torch
-from shutil import rmtree
-from multiprocessing import Pool
 from tqdm import tqdm
+
+from diffusion_planner.utils.config import Config
+from diffusion_planner.utils.visualize_input import visualize_inputs
 
 
 def parse_args():

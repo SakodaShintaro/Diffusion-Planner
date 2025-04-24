@@ -9,7 +9,6 @@ from attr import define, field
 from typing_extensions import Self
 
 from .map import MapType
-
 from .utils import to_np_f32
 
 if TYPE_CHECKING:
@@ -105,9 +104,7 @@ class Polyline:
         if self.is_empty():
             return np.empty((0, 3), dtype=np.float32)
         diff = np.diff(self.xyz, axis=0, prepend=self.xyz[0].reshape(-1, 3))
-        norm = np.clip(
-            np.linalg.norm(diff, axis=-1, keepdims=True), a_min=1e-6, a_max=1e9
-        )
+        norm = np.clip(np.linalg.norm(diff, axis=-1, keepdims=True), a_min=1e-6, a_max=1e9)
         return np.divide(diff, norm)
 
     @property
@@ -122,9 +119,7 @@ class Polyline:
         if self.is_empty():
             return np.empty((0, 2), dtype=np.float32)
         diff = np.diff(self.xy, axis=0, prepend=self.xy[0].reshape(-1, 2))
-        norm = np.clip(
-            np.linalg.norm(diff, axis=-1, keepdims=True), a_min=1e-6, a_max=1e9
-        )
+        norm = np.clip(np.linalg.norm(diff, axis=-1, keepdims=True), a_min=1e-6, a_max=1e9)
         return np.divide(diff, norm)
 
     def __len__(self) -> int:
@@ -168,9 +163,7 @@ class Polyline:
             return (
                 np.concatenate([self.xyz, self.dxyz, type_id], axis=1, dtype=np.float32)
                 if as_3d
-                else np.concatenate(
-                    [self.xy, self.dxy, type_id], axis=1, dtype=np.float32
-                )
+                else np.concatenate([self.xy, self.dxy, type_id], axis=1, dtype=np.float32)
             )
         else:
             return self.xyz if as_3d else self.xy

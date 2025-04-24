@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from .uuid import uuid
-from .map import MapType
 from .agents_base import AgentType
+from .map import MapType
+from .uuid import uuid
 
 AGENT_TYPE_MAPPING: dict[str, AgentType] = {
     # Vehicle

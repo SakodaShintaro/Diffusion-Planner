@@ -41,9 +41,7 @@ if __name__ == "__main__":
     map2bl_mat4x4[0, 3] = ego_x
     map2bl_mat4x4[1, 3] = ego_y
     map2bl_mat4x4[2, 3] = ego_z
-    map2bl_mat4x4[0:3, 0:3] = Rotation.from_quat(
-        [ego_qx, ego_qy, ego_qz, ego_qw]
-    ).as_matrix()
+    map2bl_mat4x4[0:3, 0:3] = Rotation.from_quat([ego_qx, ego_qy, ego_qz, ego_qw]).as_matrix()
     map2bl_mat4x4 = np.linalg.inv(map2bl_mat4x4)
 
     lanes_tensor, lanes_speed_limit, lanes_has_speed_limit = create_lane_tensor(

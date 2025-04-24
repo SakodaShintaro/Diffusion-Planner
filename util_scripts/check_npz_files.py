@@ -1,8 +1,9 @@
-import numpy as np
-from pathlib import Path
 import argparse
 from collections import defaultdict
+from pathlib import Path
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def parse_args():
@@ -213,9 +214,7 @@ if __name__ == "__main__":
             plt.ylabel("y [m]")
             plt.title(f"2 seconds later agent{i}")
         plt.tight_layout()
-        save_path = (
-            root_dir.parent / f"neighbor_agents_future_{timestep // 10}sec_later.png"
-        )
+        save_path = root_dir.parent / f"neighbor_agents_future_{timestep // 10}sec_later.png"
         plt.savefig(save_path, bbox_inches="tight", pad_inches=0.05)
         plt.close()
         print(f"Save to {save_path}")
@@ -231,8 +230,7 @@ if __name__ == "__main__":
             plt.title(f"agent{i}")
         plt.tight_layout()
         save_path = (
-            root_dir.parent
-            / f"neighbor_agents_future_cos_{timestep // 10}sec_later_hist.png"
+            root_dir.parent / f"neighbor_agents_future_cos_{timestep // 10}sec_later_hist.png"
         )
         plt.savefig(save_path, bbox_inches="tight", pad_inches=0.05)
         plt.close()
@@ -249,13 +247,11 @@ if __name__ == "__main__":
             plt.title(f"agent{i}")
         plt.tight_layout()
         save_path = (
-            root_dir.parent
-            / f"neighbor_agents_future_sin_{timestep // 10}sec_later_hist.png"
+            root_dir.parent / f"neighbor_agents_future_sin_{timestep // 10}sec_later_hist.png"
         )
         plt.savefig(save_path, bbox_inches="tight", pad_inches=0.05)
         plt.close()
         print(f"Save to {save_path}")
-
 
     ######################
     # (5) static_objects #

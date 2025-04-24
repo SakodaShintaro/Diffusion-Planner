@@ -1,8 +1,9 @@
-from torch.fx import symbolic_trace, GraphModule
-from torch.fx.graph import Node
-import torch.nn as nn
-import torch
 import copy
+
+import torch
+import torch.nn as nn
+from torch.fx import GraphModule, symbolic_trace
+from torch.fx.graph import Node
 
 from diffusion_planner.model.module.encoder import *
 
@@ -55,11 +56,11 @@ class LaneFusionEncoderONNX(nn.Module):
         self.emb_project = original.emb_project
 
     def forward(self, x, speed_limit, has_speed_limit):
-        '''
+        """
         x: B, P, V, D (x, y, x'-x, y'-y, x_left-x, y_left-y, x_right-x, y_right-y, traffic(4))
         speed_limit: B, P, 1
         has_speed_limit: B, P, 1
-        '''
+        """
         traffic = x[:, :, 0, 8:]
         x = x[..., :8]
 
@@ -76,11 +77,7 @@ class LaneFusionEncoderONNX(nn.Module):
         valid_indices = ~mask_p.view(-1)
 
         x = x.view(B * P, V, -1)
-        x = torch.where(
-            valid_indices.view(-1, 1, 1),
-            x,
-            torch.zeros_like(x)
-        )
+        x = torch.where(valid_indices.view(-1, 1, 1), x, torch.zeros_like(x))
 
         x = self.channel_pre_project(x)
         x = x.permute(0, 2, 1)
@@ -99,9 +96,11 @@ class LaneFusionEncoderONNX(nn.Module):
         speed_limit_emb = self.speed_limit_emb(speed_limit_input)
 
         unknown_speed_emb = self.unknown_speed_emb(
-            torch.zeros(B * P, dtype=torch.long, device=x.device))
-        speed_limit_embedding = has_speed_limit * speed_limit_emb + \
-            (~has_speed_limit) * unknown_speed_emb
+            torch.zeros(B * P, dtype=torch.long, device=x.device)
+        )
+        speed_limit_embedding = (
+            has_speed_limit * speed_limit_emb + (~has_speed_limit) * unknown_speed_emb
+        )
 
         traffic_light_embedding = self.traffic_emb(traffic)
 
@@ -137,14 +136,13 @@ class StaticFusionEncoderONNX(nn.Module):
         x_proj_input = x_flat[valid_mask]
 
         # Always do projection (ONNX can't branch)
-        safe_input = torch.cat([
-            x_proj_input,
-            torch.zeros((1, x_flat.shape[-1]), device=x.device)
-        ], dim=0)
+        safe_input = torch.cat(
+            [x_proj_input, torch.zeros((1, x_flat.shape[-1]), device=x.device)], dim=0
+        )
         safe_output = self.projection(safe_input)
 
         # Take only the valid part (original number of valid rows)
-        proj_out = safe_output[:x_proj_input.shape[0]]
+        proj_out = safe_output[: x_proj_input.shape[0]]
 
         # Scatter result into x_result
         x_result[valid_mask] = proj_out
@@ -163,13 +161,11 @@ class ONNXSafeModel(nn.Module):
             if isinstance(module, StaticFusionEncoder):
                 parent_module = self._get_parent_module(name)
                 subname = name.split(".")[-1]
-                setattr(parent_module, subname,
-                        StaticFusionEncoderONNX(module))
+                setattr(parent_module, subname, StaticFusionEncoderONNX(module))
             if isinstance(module, LaneFusionEncoder):
                 parent_module = self._get_parent_module(name)
                 subname = name.split(".")[-1]
-                setattr(parent_module, subname,
-                        LaneFusionEncoderONNX(module))
+                setattr(parent_module, subname, LaneFusionEncoderONNX(module))
 
     def _get_parent_module(self, name):
         parts = name.split(".")[:-1]

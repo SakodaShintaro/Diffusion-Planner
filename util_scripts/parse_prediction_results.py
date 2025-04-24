@@ -1,6 +1,7 @@
 import argparse
-from pathlib import Path
 import json
+from pathlib import Path
+
 import numpy as np
 
 
@@ -22,9 +23,7 @@ def calc_loss(inputs, prediction) -> float:
         axis=-1,
     )  # (T, 4)
     neighbors_future = inputs["neighbor_agents_future"]  # (Pn, T, 3)
-    neighbor_future_mask = (
-        np.sum((neighbors_future[..., :3] != 0), axis=-1) == 0
-    )  # (Pn, T)
+    neighbor_future_mask = np.sum((neighbors_future[..., :3] != 0), axis=-1) == 0  # (Pn, T)
     neighbors_future = np.concatenate(
         [
             neighbors_future[..., :2],
@@ -42,9 +41,7 @@ def calc_loss(inputs, prediction) -> float:
     )
     # inputs = args.observation_normalizer(inputs)
 
-    neighbor_current_mask = (
-        np.sum((neighbors_current[..., :4] != 0), axis=-1) == 0
-    )  # (Pn)
+    neighbor_current_mask = np.sum((neighbors_current[..., :4] != 0), axis=-1) == 0  # (Pn)
     neighbor_mask = np.concatenate(
         (neighbor_current_mask[:, None], neighbor_future_mask), axis=-1
     )  # (Pn, T + 1)
@@ -55,9 +52,7 @@ def calc_loss(inputs, prediction) -> float:
     current_states = np.concatenate([ego_current[None, :], neighbors_current], axis=0)
     # (Pn + 1, 4)
 
-    all_gt = np.concatenate(
-        [current_states[:, None, :], gt_future], axis=1
-    )  # (Pn + 1, T + 1, 4)
+    all_gt = np.concatenate([current_states[:, None, :], gt_future], axis=1)  # (Pn + 1, T + 1, 4)
     print(f"{all_gt.shape=}, {neighbor_mask.shape=}")
     all_gt[1:][neighbor_mask] = 0.0
 
@@ -89,9 +84,7 @@ if __name__ == "__main__":
     ave_loss_ego = 0.0
     ave_loss_nei = 0.0
 
-    for validation_path, prediction_result_path in zip(
-        validation_paths, prediction_result_paths
-    ):
+    for validation_path, prediction_result_path in zip(validation_paths, prediction_result_paths):
         validation_data = np.load(validation_path)
         prediction_result = np.load(prediction_result_path)["prediction"]
 
@@ -105,7 +98,4 @@ if __name__ == "__main__":
         ave_loss_nei += loss_nei
     ave_loss_ego /= len(validation_paths)
     ave_loss_nei /= len(validation_paths)
-    print(
-        f"Average Loss Ego: {ave_loss_ego:.4f}, "
-        f"Average Loss Nei: {ave_loss_nei:.4f}"
-    )
+    print(f"Average Loss Ego: {ave_loss_ego:.4f}, Average Loss Nei: {ave_loss_nei:.4f}")
