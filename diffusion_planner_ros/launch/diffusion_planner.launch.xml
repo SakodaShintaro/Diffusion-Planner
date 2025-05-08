@@ -2,7 +2,7 @@
   <arg name="model_dir" default="/media/shintarosakoda/5EA85517A854EF51/diffusion_planner_training_result/train_result/20250428-064130_data_ver4/"/>
 
   <node pkg="diffusion_planner_ros" exec="diffusion_planner_node" name="diffusion_planner_node" output="both">
-    <param name="vector_map_path" value="$(env HOME)/data/nas_copy/tieriv_dataset/driving_dataset/map/2025-04-16/lanelet2_map.osm"/>
+    <param name="vector_map_path" value="$(var map_path)/lanelet2_map.osm"/>
     <param name="config_json_path" value="$(var model_dir)/args.json"/>
     <param name="ckpt_path" value="$(var model_dir)/latest.pth"/>
     <param name="onnx_path" value="$(var model_dir)/model.onnx"/>
